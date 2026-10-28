@@ -302,6 +302,12 @@ export function percentIn(text) {
   return m ? Number(m[1]) : null;
 }
 
+/// "62.5%" or "70%", like the Mac app.
+export function percentText(v) {
+  const r = Math.round(v * 10) / 10;
+  return Number.isInteger(r) ? `${r}%` : `${r.toFixed(1)}%`;
+}
+
 export function classLabel(p) {
   return p >= 70 ? "1ST" : p >= 60 ? "2:1" : p >= 50 ? "2:2" : p >= 40 ? "3RD" : "FAIL";
 }
@@ -313,21 +319,24 @@ export function grades(unit, tasks) {
   const items = [];
   for (const t of unitTasks) {
     const own = percentIn(t.title);
-    if (own !== null) { items.push({ task: t, weight: own }); continue; }
+    if (own !== null) { items.push({ task: t, weight: own, shared: false }); continue; }
     const siblings = bySection[t.section];
     const sectionWeight = percentIn(t.section);
     if (sectionWeight === null || siblings.some((s) => percentIn(s.title) !== null)) continue;
-    items.push({ task: t, weight: sectionWeight / siblings.length });
+    items.push({ task: t, weight: sectionWeight / siblings.length, shared: true });
   }
   const weightTotal = items.reduce((a, i) => a + i.weight, 0);
   const marked = items.filter((i) => state.marks[i.task.id] !== undefined);
   const markedWeight = marked.reduce((a, i) => a + i.weight, 0);
   const secured = marked.reduce((a, i) => a + state.marks[i.task.id] * i.weight / 100, 0);
   const remaining = Math.max(0, 100 - markedWeight);
-  const target = (threshold) => secured >= threshold ? "secured"
-    : remaining <= 0 ? "out of reach"
-    : (threshold - secured) / remaining * 100 > 100 ? "out of reach"
-    : `${Math.ceil((threshold - secured) / remaining * 100)}% avg`;
+  /// What average the remaining work needs for a class: { secured }, { need: 62.5 } or { out: true }.
+  const target = (threshold) => {
+    if (secured >= threshold) return { secured: true };
+    if (remaining <= 0) return { out: true };
+    const need = (threshold - secured) / remaining * 100;
+    return need > 100 ? { out: true } : { need };
+  };
   return { items, weightTotal, markedWeight, secured, average: markedWeight > 0 ? secured / markedWeight * 100 : null,
            maxPossible: secured + remaining, target };
 }
