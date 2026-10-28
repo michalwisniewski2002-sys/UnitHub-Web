@@ -7,7 +7,7 @@ import { play, PACK_NAMES } from "./sound.js";
 import * as FX from "./effects.js";
 
 const esc = FX.escape;
-const VERSION = "3.1";
+const VERSION = "3.2";
 /// ⌘ on Macs, Ctrl everywhere else.
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl+";
 const root = document.documentElement;
@@ -15,9 +15,10 @@ const app = document.getElementById("app");
 
 let screen = "week";
 let filters = { unit: "all", search: "", status: "todo" };
-/// The calendar's month ("2026-10") and the day picked in it.
-let calendarMonth = D.todayISO().slice(0, 7);
+/// The calendar's week (its Monday), the day picked in it, and the task picked in the grid.
+let calendarWeek = D.thisWeek()[0];
 let calendarDay = D.todayISO();
+let calendarPick = null;
 let expanded = new Set();
 let syncStatus = "";
 let installPrompt = null;
@@ -180,47 +181,104 @@ function tasksScreen({ units, tasks }) {
 /// "⚑ Portfolio · 3 pm": a unit's final deadline, with what it is and its time when given.
 const finalText = (u) => `⚑ ${u.code} ${u.finalLabel || "final"}${u.finalTime ? ` · ${u.finalTime}` : ""}`;
 
+/// Minutes after midnight for a due time like "3 pm", "15:30", "9.30am", "noon" or "midnight" (23:59); null when there's none.
+function dueMinutes(text) {
+  const t = (text ?? "").toLowerCase().trim();
+  if (!t) return null;
+  if (t.includes("midnight")) return 23 * 60 + 59;
+  if (t.includes("noon") || t.includes("midday")) return 12 * 60;
+  const m = t.match(/(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?/);
+  if (!m) return null;
+  let h = Number(m[1]); const min = Number(m[2] ?? 0);
+  if (m[3] === "pm" && h < 12) h += 12;
+  if (m[3] === "am" && h === 12) h = 0;
+  return h < 24 && min < 60 ? h * 60 + min : null;
+}
+
+/// London's minutes after midnight right now.
+const nowMinutes = () => { const [h, m] = D.londonTime().split(":").map(Number); return h * 60 + m; };
+
+const HOUR = 52;
+
+/// Monday–Friday (plus the weekend when it has work) by hour, like the Mac Timetable: timed tasks sit as blocks
+/// ending at their deadline, untimed and midnight ones in the "Any time" strip, with a line at the current time.
 function calendarScreen({ units, tasks }) {
   const today = D.todayISO();
-  const [y, m] = calendarMonth.split("-").map(Number);
-  const first = `${calendarMonth}-01`;
-  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  const startOffset = (new Date(Date.UTC(y, m - 1, 1)).getUTCDay() + 6) % 7; // Monday first
-  const weeks = Math.ceil((startOffset + daysInMonth) / 7);
-  const startDay = D.dayNumber(first) - startOffset;
-  const byDay = new Map();
-  for (const t of tasks) if (t.due) (byDay.get(t.due) ?? byDay.set(t.due, []).get(t.due)).push({ task: t });
-  for (const u of units) if (u.final) (byDay.get(u.final) ?? byDay.set(u.final, []).get(u.final)).unshift({ final: u });
-  const cells = [];
-  for (let i = 0; i < weeks * 7; i++) {
-    const iso = D.isoFromDayNumber(startDay + i);
-    const items = byDay.get(iso) ?? [];
-    const inMonth = iso.slice(0, 7) === calendarMonth;
-    const shown = items.slice(0, 3).map((x) => x.final
-      ? `<div class="cal-item final" style="--uc:${unitColour(x.final.code, units)}">${esc(finalText(x.final))}</div>`
-      : `<div class="cal-item ${D.isDone(x.task) ? "done" : ""} ${D.dueState(x.task)}" style="--uc:${unitColour(x.task.unit, units)}"><i></i>${esc(x.task.title)}</div>`).join("");
-    const more = items.length > 3 ? `<div class="cal-more label">+${items.length - 3} more</div>` : "";
-    cells.push(`<button class="cal-day ${inMonth ? "" : "outside"} ${iso === today ? "today" : ""} ${iso === calendarDay ? "picked" : ""}"
-      data-action="cal-day" data-day="${iso}" aria-label="${esc(D.dayLabel(iso))}: ${items.length} item${items.length === 1 ? "" : "s"}">
-      <span class="cal-num label">${Number(iso.slice(8))}</span>${shown}${more}</button>`);
+  const start = D.dayNumber(calendarWeek);
+  const days = Array.from({ length: 7 }, (_, i) => D.isoFromDayNumber(start + i));
+  const timed = days.map(() => []), anyTime = days.map(() => []);
+  for (const t of tasks) {
+    const i = days.indexOf(t.due);
+    if (i < 0) continue;
+    const at = dueMinutes(t.time);
+    (at === null || at >= 23 * 60 + 30 ? anyTime : timed)[i].push({ task: t, at });
   }
-  const heads = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => `<div class="cal-head label">${d}</div>`).join("");
-  const grid = panel(`<div class="panel-head" style="justify-content:space-between">
-      ${header(D.monthLabel(first))}
-      <div style="display:flex;gap:8px"><button class="btn quiet" data-action="cal-move" data-step="-1" aria-label="Previous month">‹</button>
-      <button class="btn quiet" data-action="cal-today">Today</button>
-      <button class="btn quiet" data-action="cal-move" data-step="1" aria-label="Next month">›</button></div></div>
-    <div class="cal-grid">${heads}${cells.join("")}</div>`, { emphasis: true });
-  const picked = byDay.get(calendarDay) ?? [];
-  const finals = picked.filter((x) => x.final).map((x) => x.final);
-  const dayTasks = picked.filter((x) => x.task).map((x) => x.task);
+  for (const u of units) {
+    const i = days.indexOf(u.final);
+    if (i < 0) continue;
+    const at = dueMinutes(u.finalTime);
+    (at === null || at >= 23 * 60 + 30 ? anyTime : timed)[i].unshift({ final: u, at });
+  }
+  const visible = [0, 1, 2, 3, 4, ...([5, 6].some((i) => timed[i].length || anyTime[i].length) ? [5, 6] : [])];
+  const times = timed.flat().map((x) => x.at);
+  const firstHour = Math.floor((Math.min(...times, 585) - 45) / 60); // blocks start 45 min before their deadline at most
+  const nowHour = days.includes(today) ? Math.ceil((nowMinutes() + 30) / 60) : 0; // keep the now line in view
+  const lastHour = Math.min(24, Math.max(18, nowHour, Math.ceil((Math.max(...times, 0) + 15) / 60)));
+  const height = (lastHour - firstHour) * HOUR;
+
+  const chip = (x) => x.final
+    ? `<button class="wk-chip final" data-action="cal-day" data-day="${esc(x.final.final)}" style="--uc:${unitColour(x.final.code, units)}">${esc(finalText(x.final))}</button>`
+    : `<button class="wk-chip ${D.isDone(x.task) ? "done" : ""} ${D.dueState(x.task)}" data-action="cal-task" data-day="${esc(x.task.due)}" data-id="${esc(x.task.id)}" style="--uc:${unitColour(x.task.unit, units)}">
+        <b>${esc(x.task.unit)}</b>${x.at !== null ? `<small>${esc(x.task.time.toUpperCase())}</small>` : ""}<span>${esc(x.task.title)}</span></button>`;
+  const block = (x, slot, of) => {
+    const top = (x.at - firstHour * 60) / 60 * HOUR - 44;
+    const unit = x.final ? x.final.code : x.task.unit;
+    const done = x.task && D.isDone(x.task);
+    const title = x.final ? `⚑ ${x.final.finalLabel || "Final deadline"}` : x.task.title;
+    const time = x.final ? x.final.finalTime : x.task.time;
+    return `<button class="wk-block ${done ? "done" : ""} ${x.task ? D.dueState(x.task) : "final"} ${x.task && x.task.id === calendarPick ? "picked" : ""}"
+      data-action="${x.task ? "cal-task" : "cal-day"}" data-day="${esc(x.task ? x.task.due : x.final.final)}" ${x.task ? `data-id="${esc(x.task.id)}"` : ""}
+      style="--uc:${unitColour(unit, units)};top:${Math.max(2, top)}px;left:calc(${slot * 100 / of}% + 3px);width:calc(${100 / of}% - 6px)">
+      <span class="code">${esc(unit)}${done ? " ✓" : ""}</span><span class="t">${esc(title)}</span><span class="tm">DUE ${esc((time ?? "").toUpperCase())}</span></button>`;
+  };
+
+  const cols = `repeat(${visible.length}, minmax(0, 1fr))`;
+  const heads = visible.map((i) => `<button class="wk-head label ${days[i] === today ? "today" : ""} ${days[i] === calendarDay ? "picked" : ""}" data-action="cal-day" data-day="${days[i]}">
+      <b>${D.dayLabel(days[i]).slice(0, 3).toUpperCase()}</b><small>${D.dayLabel(days[i]).slice(4).toUpperCase()}</small></button>`).join("");
+  const strip = visible.some((i) => anyTime[i].length)
+    ? `<div class="wk-row"><div class="wk-gutter label">ANY<br>TIME</div><div class="wk-cols" style="grid-template-columns:${cols}">
+        ${visible.map((i) => `<div class="wk-any ${days[i] === today ? "today" : ""}">${anyTime[i].map(chip).join("")}</div>`).join("")}</div></div>` : "";
+  const hours = Array.from({ length: lastHour - firstHour }, (_, h) => `<div class="wk-hour label" style="height:${HOUR}px">${String(firstHour + h).padStart(2, "0")}:00</div>`).join("");
+  const columns = visible.map((i) => {
+    // Tasks due at the same time share the column side by side.
+    const groups = new Map();
+    for (const x of timed[i]) (groups.get(x.at) ?? groups.set(x.at, []).get(x.at)).push(x);
+    const blocks = [...groups.values()].flatMap((g) => g.map((x, n) => block(x, n, g.length))).join("");
+    const now = days[i] === today ? `<div class="wk-now" data-first="${firstHour}" style="top:${(nowMinutes() - firstHour * 60) / 60 * HOUR}px"><i></i></div>` : "";
+    return `<div class="wk-col ${days[i] === today ? "today" : ""}" data-action="cal-day" data-day="${days[i]}" style="height:${height}px;background-size:100% ${HOUR}px">${blocks}${now}</div>`;
+  }).join("");
+  const empty = !visible.some((i) => timed[i].length || anyTime[i].length);
+
+  const thisWeek = D.thisWeek()[0];
+  const nav = `<div class="wk-nav">
+      <button class="btn quiet" data-action="cal-move" data-step="-1" aria-label="Previous week">‹</button>
+      <div class="label"><div class="wk-title">${calendarWeek === thisWeek ? "THIS WEEK" : `WEEK OF ${esc(D.dayLabel(calendarWeek).slice(4).toUpperCase())}`}</div>
+        <div class="wk-range">${esc(D.dayLabel(days[0]).toUpperCase())} – ${esc(D.dayLabel(days[6]).toUpperCase())}</div></div>
+      <button class="btn quiet" data-action="cal-move" data-step="1" aria-label="Next week">›</button>
+      <span style="flex:1"></span>${calendarWeek !== thisWeek ? `<button class="btn" data-action="cal-today">This week</button>` : ""}</div>`;
+  const grid = empty ? panel(`<div class="empty label">— NOTHING DUE THIS WEEK</div>`)
+    : panel(`<div class="wk"><div class="wk-row"><div class="wk-gutter"></div><div class="wk-cols" style="grid-template-columns:${cols}">${heads}</div></div>
+      ${strip}<div class="wk-row"><div class="wk-gutter">${hours}</div><div class="wk-cols" style="grid-template-columns:${cols}">${columns}</div></div></div>`);
+
+  const finals = units.filter((u) => u.final === calendarDay);
+  const dayTasks = tasks.filter((t) => t.due === calendarDay);
   const detail = panel(`<div class="panel-head" style="justify-content:space-between">
       ${header(calendarDay === today ? `Today · ${D.dayLabel(calendarDay).slice(4)}` : D.dayLabel(calendarDay), `${dayTasks.filter(D.isDone).length}/${dayTasks.length}`, calendarDay === today ? "today" : "")}
       <button class="btn primary" data-action="add-task-on" data-day="${calendarDay}" ${units.length ? "" : "disabled"}>+ Add task on this day</button></div>
     ${finals.map((u) => finalRow(u, units)).join("")}
     ${dayTasks.map((t) => taskRow(t, units)).join("")}
-    ${picked.length ? "" : `<div class="empty label">${esc(words().empty)}</div>`}`, { border: calendarDay === today ? "var(--accent)" : "" });
-  return grid + detail;
+    ${finals.length || dayTasks.length ? "" : `<div class="empty label">${esc(words().empty)}</div>`}`, { border: calendarDay === today ? "var(--accent)" : "" });
+  return nav + grid + detail;
 }
 
 function gradesScreen({ units, tasks }) {
@@ -306,7 +364,9 @@ function settingsScreen({ units, tasks }) {
     <div class="settings-row"><div style="display:flex;gap:8px"><button class="btn" data-action="backup">Save backup</button>
       <button class="btn quiet" data-action="restore">Restore from file</button></div></div>`);
   const about = panel(`<div class="panel-head">${header("About")}</div><div class="about"><img src="icons/icon-192.png" alt="">
-    <div><b>UnitHub ${VERSION}</b><div class="made">MADE BY MICHAL · MICHAL TECH</div><small>© 2026 Michal Tech. Your tasks stay in your browser and your own GitHub repos.</small></div></div>`);
+    <div><b>UnitHub ${VERSION}</b><div class="made">MADE BY MICHAL · MICHAL TECH</div><small>© 2026 Michal Tech. Your tasks stay in your browser and your own GitHub repos.</small></div></div>
+    <div class="settings-row"><span>Updates install by themselves when you open the app. Check now to get one straight away.</span>
+      <button class="btn" data-action="check-updates">Check for updates</button></div>`);
   void tasks;
   return source + unitsPanel + github + panel(`<div class="panel-head">${header("Skin", SKINS.length)}</div><div class="cards">${skinCards}</div>`)
     + panel(`<div class="panel-head">${header("Theme", s.palettes.length)}</div><div class="cards">${themeCards}</div>`) + system + backup + about;
@@ -544,6 +604,34 @@ function openUnitEditor(unit = null, onSave = () => {}) {
   };
 }
 
+/// Asks the site for its newest version; when it's newer, fetches every file fresh (past the offline cache) and reloads.
+/// Your tasks live in browser storage, so they're kept.
+async function checkForUpdates(button) {
+  button.disabled = true;
+  button.textContent = "Checking…";
+  try {
+    const latest = (await (await fetch("js/app.js", { cache: "no-store" })).text()).match(/const VERSION = "([^"]+)"/)?.[1];
+    if (!latest) throw new Error();
+    if (latest === VERSION) {
+      toast(`You're up to date (UnitHub ${VERSION}).`);
+      button.disabled = false;
+      button.textContent = "Check for updates";
+      return;
+    }
+    button.textContent = `Updating to ${latest}…`;
+    const files = ["./", "index.html", "styles.css", "manifest.webmanifest", "sw.js", "js/app.js", "js/data.js", "js/skins.js",
+                   "js/palettes.js", "js/sound.js", "js/effects.js"];
+    await Promise.all(files.map((f) => fetch(f, { cache: "reload" })));
+    for (const key of await caches.keys()) await caches.delete(key);
+    await (await navigator.serviceWorker?.getRegistration())?.update();
+    location.reload();
+  } catch {
+    toast("Couldn't reach the UnitHub site. Check your internet and try again.");
+    button.disabled = false;
+    button.textContent = "Check for updates";
+  }
+}
+
 function toast(text) {
   const el = document.createElement("div");
   el.innerHTML = panel(`<div class="toast-inner" style="padding:10px 18px">${esc(text)}</div>`);
@@ -659,16 +747,19 @@ app.addEventListener("click", (e) => {
     case "edit-task": openTaskEditor(task); break;
     case "add-task": openTaskEditor(); break;
     case "add-task-on": openTaskEditor(null, target.dataset.day); break;
-    case "cal-day": calendarDay = target.dataset.day; calendarMonth = calendarDay.slice(0, 7); sound("blip"); render(); break;
-    case "cal-today": calendarDay = D.todayISO(); calendarMonth = calendarDay.slice(0, 7); sound("blip"); render(); break;
-    case "cal-move": {
-      const [cy, cm] = calendarMonth.split("-").map(Number);
-      const next = new Date(Date.UTC(cy, cm - 1 + Number(target.dataset.step), 1));
-      calendarMonth = next.toISOString().slice(0, 7);
+    case "cal-day": calendarDay = target.dataset.day; calendarPick = null; sound("blip"); render(); break;
+    case "cal-task":
+      calendarDay = target.dataset.day; calendarPick = target.dataset.id; expanded.add(calendarPick); sound("blip"); render();
+      document.querySelector(`.panel:last-of-type [data-task="${CSS.escape(calendarPick)}"]`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      break;
+    case "cal-today": calendarWeek = D.thisWeek()[0]; calendarDay = D.todayISO(); calendarPick = null; sound("blip"); render(); break;
+    case "cal-move":
+      calendarWeek = D.isoFromDayNumber(D.dayNumber(calendarWeek) + 7 * Number(target.dataset.step));
+      calendarDay = D.dayNumber(calendarWeek) <= D.dayNumber(D.todayISO()) && D.dayNumber(D.todayISO()) < D.dayNumber(calendarWeek) + 7 ? D.todayISO() : calendarWeek;
+      calendarPick = null;
       sound("blip");
       render({ animate: true });
       break;
-    }
     case "filter-unit": filters.unit = target.dataset.unit; sound("blip"); render(); break;
     case "filter-status": filters.status = target.dataset.status; sound("blip"); render(); break;
     case "refresh": refresh(true); break;
@@ -704,6 +795,7 @@ app.addEventListener("click", (e) => {
       break;
     }
     case "install": installPrompt?.prompt(); installPrompt = null; break;
+    case "check-updates": checkForUpdates(target); break;
   }
 });
 
@@ -818,6 +910,10 @@ addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installProm
 addEventListener("focus", () => { if (Date.now() - new Date(state.github.lastUpdated || 0).getTime() > 30_000) refresh(); });
 setInterval(() => refresh(), 10 * 60_000);
 setInterval(remind, 5 * 60_000);
+setInterval(() => {
+  const line = document.querySelector(".wk-now");
+  if (line) line.style.top = `${(nowMinutes() - Number(line.dataset.first) * 60) / 60 * HOUR}px`;
+}, 30_000);
 // Redraw at midnight (London) so "today" moves on.
 let lastDay = D.todayISO();
 setInterval(() => { if (D.todayISO() !== lastDay) { lastDay = D.todayISO(); render(); } }, 60_000);
