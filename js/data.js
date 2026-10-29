@@ -313,18 +313,24 @@ export function classLabel(p) {
 }
 
 export function grades(unit, tasks) {
+  // One entry per assessment, like the Mac app: every task with "NN%" in its title. If some sit in a
+  // "Key deadlines" / "Assessments" section, only those count; "Part A/B…" fold into the piece they add up to;
+  // with no percentages in titles, one entry per weighted section (marked against its last task).
   const unitTasks = tasks.filter((t) => t.unit === unit.code);
-  const bySection = {};
-  for (const t of unitTasks) (bySection[t.section] ??= []).push(t);
-  const items = [];
-  for (const t of unitTasks) {
-    const own = percentIn(t.title);
-    if (own !== null) { items.push({ task: t, weight: own, shared: false }); continue; }
-    const siblings = bySection[t.section];
-    const sectionWeight = percentIn(t.section);
-    if (sectionWeight === null || siblings.some((s) => percentIn(s.title) !== null)) continue;
-    items.push({ task: t, weight: sectionWeight / siblings.length, shared: true });
+  const plain = (text) => text.replace(/\s*\(\s*\d+(?:\.\d+)?\s*%\s*\)/g, "").trim();
+  let items = unitTasks.filter((t) => percentIn(t.title) !== null).map((t) => ({ task: t, title: plain(t.title), weight: percentIn(t.title) }));
+  const keyed = items.filter((i) => /deadline|assess/i.test(i.task.section ?? ""));
+  if (keyed.length) items = keyed;
+  const parts = items.filter((i) => /^part\s+[a-z0-9]\b/i.test(i.title));
+  const partsTotal = parts.reduce((a, i) => a + i.weight, 0);
+  if (parts.length && items.some((i) => !parts.includes(i) && Math.abs(i.weight - partsTotal) < 0.5)) items = items.filter((i) => !parts.includes(i));
+  if (!items.length) {
+    const bySection = {};
+    for (const t of unitTasks) (bySection[t.section] ??= []).push(t);
+    items = Object.entries(bySection).filter(([name]) => percentIn(name) !== null).map(([name, list]) => ({
+      task: list.reduce((a, b) => ((b.due ?? "") > (a.due ?? "") ? b : a)), title: plain(name), weight: percentIn(name) }));
   }
+  items.sort((a, b) => (a.task.due ?? "9999").localeCompare(b.task.due ?? "9999") || a.title.localeCompare(b.title));
   const weightTotal = items.reduce((a, i) => a + i.weight, 0);
   const marked = items.filter((i) => state.marks[i.task.id] !== undefined);
   const markedWeight = marked.reduce((a, i) => a + i.weight, 0);

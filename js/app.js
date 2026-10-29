@@ -9,7 +9,7 @@ import * as FX from "./effects.js";
 const esc = FX.escape;
 /// Capitals for most skins; left as written in skins that use sentence case (Cupertino).
 const U = (text) => (skin().sentenceCase ? String(text) : String(text).toUpperCase());
-const VERSION = "3.3";
+const VERSION = "3.4";
 /// ⌘ on Macs, Ctrl everywhere else.
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl+";
 const root = document.documentElement;
@@ -294,14 +294,14 @@ function gradesScreen({ units, tasks }) {
     const marked = g.items.filter((i) => state.marks[i.task.id] !== undefined).length;
     const head = `<div class="panel-head">${header(`${u.code} · ${u.name}`, `${marked}/${g.items.length} MARKED`)}
       <span class="tag" style="--tc:${unitColour(u.code, units)};margin-left:auto">${esc(u.code)}</span></div>`;
-    if (!g.items.length) return panel(`${head}<div class="note">No weighted work found. Add percentages like "(30%)" to section names or task titles${state.source === "github" ? " in this unit's tasks.json" : ""}.</div>`);
+    if (!g.items.length) return panel(`${head}<div class="note">No assessments found. Add a percentage like "(30%)" to each assessment's title${state.source === "github" ? " in this unit's tasks.json" : ""}.</div>`);
     const targets = [["1ST", 70], ["2:1", 60], ["2:2", 50], ["3RD", 40]].map(([l, t]) => {
       const r = g.target(t);
       return `<div class="gtarget label"><b>${l}</b><span class="${r.secured ? "ok" : r.out ? "out" : ""}">${r.secured ? "✓ SECURED" : r.out ? "OUT OF REACH" : `NEED ${P(r.need)} AVG`}</span></div>`;
     }).join("");
-    const rows = g.items.map((i) => `<div class="grow-row"><div class="body"><div class="title">${esc(i.task.title)}</div>
-        <div class="meta"><span class="section">${esc(i.task.section)}</span>${i.task.due ? `<span class="label" style="font-size:calc(11px + var(--bump,0px))">${esc(U(D.dayLabel(i.task.due)))}${i.task.time ? `, ${esc(U(i.task.time))}` : ""}</span>` : ""}</div></div>
-      <div class="gweight label">WEIGHT ${P(i.weight)}${i.shared ? "<small>SHARED</small>" : ""}</div>
+    const rows = g.items.map((i) => `<div class="grow-row"><div class="body"><div class="title">${esc(i.title)}</div>
+        <div class="meta">${i.task.due ? `<span class="label" style="font-size:calc(11px + var(--bump,0px))">${esc(U(D.dayLabel(i.task.due)))}${i.task.time ? `, ${esc(U(i.task.time))}` : ""}</span>` : ""}</div></div>
+      <div class="gweight label">Weight ${P(i.weight)}</div>
       <label class="gmark"><input type="number" min="0" max="100" step="0.5" placeholder="—" value="${state.marks[i.task.id] ?? ""}" data-mark="${esc(i.task.id)}" aria-label="Mark for ${esc(i.task.title)}, out of 100">%</label></div>`).join("");
     return panel(`${head}
       <div class="gsummary"><div class="gstats">${stat("Average so far", g.average === null ? "—" : P(g.average), g.average === null ? "" : D.classLabel(g.average))}
@@ -311,8 +311,8 @@ function gradesScreen({ units, tasks }) {
       ${rows}`);
   }).join("");
   return unitPanels + `<p class="gnote">${state.source === "github"
-    ? `Weights come from your tasks.json: a percentage in a task's title ("Quiz 1 (10%)") counts for that much; otherwise a section's percentage ("Weekly labs (30%)") is shared equally between its tasks. Marks stay in this browser.`
-    : `A percentage in a task's title ("Quiz 1 (10%)") counts for that much; otherwise a section's percentage ("Weekly labs (30%)") is shared equally between its tasks. Marks stay in this browser.`}</p>`;
+    ? `One row per assessment: each task with a percentage in its title ("Quiz 1 (10%)"). If your tasks.json has a "Key deadlines" section, only the assessments in it count, and parts of a big project ("Part A", "Part B") fold into its one final mark. Marks stay in this browser.`
+    : `One row per assessment: each task with a percentage in its title ("Quiz 1 (10%)"), and parts of a big project ("Part A", "Part B") fold into its one final mark. Marks stay in this browser.`}</p>`;
 }
 
 function settingsScreen({ units, tasks }) {
