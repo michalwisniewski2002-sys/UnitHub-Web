@@ -7,7 +7,9 @@ import { play, PACK_NAMES } from "./sound.js";
 import * as FX from "./effects.js";
 
 const esc = FX.escape;
-const VERSION = "3.2";
+/// Capitals for most skins; left as written in skins that use sentence case (Cupertino).
+const U = (text) => (skin().sentenceCase ? String(text) : String(text).toUpperCase());
+const VERSION = "3.3";
 /// ⌘ on Macs, Ctrl everywhere else.
 const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl+";
 const root = document.documentElement;
@@ -49,7 +51,8 @@ function applySkin() {
   root.dataset.mono = String(s.font.includes("monospace") && s.id !== "pixelquest");
   root.style.setProperty("--glow", s.glow ? `color-mix(in srgb, ${p.accent} ${Math.round(s.glow * (p.light ? 50 : 100))}%, transparent)` : "transparent");
   Object.assign(root.dataset, { panel: s.panel, header: s.header, bg: s.background, selection: s.selection, accent: s.accent,
-                                tag: s.id === "arasaka" || s.id === "pixelquest" ? "filled" : ["sonder", "mochi", "skyglass"].includes(s.id) ? "capsule" : "outline",
+                                tag: s.id === "arasaka" || s.id === "pixelquest" ? "filled" : ["sonder", "mochi", "skyglass", "cupertino"].includes(s.id) ? "capsule" : "outline",
+                                case: s.sentenceCase ? "sentence" : "caps",
                                 light: String(p.light) });
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", p.background);
   FX.paintTextures(root, p);
@@ -75,8 +78,8 @@ function panel(inner, { cls = "", glow = false, emphasis = false, border = "" } 
 function header(title, count = null, cls = "") {
   const style = skin().header;
   const mark = { slashes: "//", bar: "", glitch: "//", sparkle: "✦", heart: "♥", rule: "", leaf: "❦", orb: "", cursor: "▶" }[style];
-  const countText = count === null ? "" : style === "slashes" ? `[${count}]` : style === "glitch" ? `//${count}` : style === "bar" ? `— ${count}` : style === "rule" ? count : `· ${count}`;
-  return `<div class="header ${cls}"><span class="mark">${mark}</span><span class="title decode">${esc(title.toUpperCase())}</span>
+  const countText = count === null ? "" : style === "slashes" ? `[${count}]` : style === "glitch" ? `//${count}` : style === "bar" ? `— ${count}` : style === "rule" || style === "plain" ? count : `· ${count}`;
+  return `<div class="header ${cls}"><span class="mark">${mark}</span><span class="title decode">${esc(U(title))}</span>
     ${style === "rule" ? `<span class="rule"></span>` : ""}${count === null ? "" : `<span class="count">${esc(countText)}</span>`}</div>`;
 }
 
@@ -101,7 +104,7 @@ function taskRow(task, units) {
         <div class="actions"><button class="btn quiet" data-action="edit-task">Edit</button></div>
         <div class="id">${esc(task.id)}</div>` : ""}
     </div>
-    <div class="due label ${state_}">${state_ === "overdue" ? "▲ " : ""}${esc(when.toUpperCase())}${rest.length ? `<small>${esc(rest.join(" · ").toUpperCase())}</small>` : ""}</div>
+    <div class="due label ${state_}">${state_ === "overdue" ? "▲ " : ""}${esc(U(when))}${rest.length ? `<small>${esc(U(rest.join(" · ")))}</small>` : ""}</div>
     <button class="chev" data-action="expand" aria-label="${open ? "Hide" : "Show"} details" aria-expanded="${open}">${open ? "⌃" : "⌄"}</button>
   </div>`;
 }
@@ -117,7 +120,7 @@ function finalRow(u, units) {
   const days = D.dayNumber(u.final) - D.dayNumber(D.todayISO());
   return `<div class="task"><div class="body"><div class="title">${esc(u.finalLabel || "Final deadline")}</div>
     <div class="meta"><span class="tag" style="--tc:${unitColour(u.code, units)}">${esc(u.code)}</span><span class="section">${esc(u.name)}</span></div></div>
-    <div class="due label ${days >= 0 && days <= 7 ? "soon" : ""}">⚑ FINAL${u.finalTime ? `<small>${esc(u.finalTime.toUpperCase())}</small>` : ""}</div></div>`;
+    <div class="due label ${days >= 0 && days <= 7 ? "soon" : ""}">⚑ FINAL${u.finalTime ? `<small>${esc(U(u.finalTime))}</small>` : ""}</div></div>`;
 }
 
 // MARK: Screens
@@ -129,8 +132,8 @@ function weekScreen({ units, tasks }) {
   const doneCount = week.filter(D.isDone).length;
   const [, , dd] = today.split("-");
   const hero = panel(`<div class="hero">
-    <div class="top"><div class="bigdate">${esc(D.dayLabel(today).toUpperCase())}</div>
-      <div class="week label">WEEK OF ${esc(D.dayLabel(days[0]).toUpperCase().slice(4))}<small>LON ${D.londonTime()}</small></div></div>
+    <div class="top"><div class="bigdate">${esc(U(D.dayLabel(today)))}</div>
+      <div class="week label">Week of ${esc(U(D.dayLabel(days[0])).slice(4))}<small>LON ${D.londonTime()}</small></div></div>
     <div class="stats"><div><div class="stat">${week.length}</div><div class="statlabel label">${esc(skin().prefix)}DUE</div></div>
       <div><div class="stat">${doneCount}</div><div class="statlabel label">${esc(skin().prefix)}DONE</div></div>
       <div><div class="stat ${overdue.length ? "late" : ""}">${overdue.length}</div><div class="statlabel label">${esc(skin().prefix)}LATE</div></div></div>
@@ -153,7 +156,7 @@ function tasksScreen({ units, tasks }) {
     const list = u.code === "all" ? tasks : tasks.filter((t) => t.unit === u.code);
     const done = list.filter(D.isDone).length;
     const days = u.final ? D.dayNumber(u.final) - D.dayNumber(today) : null;
-    const info = u.code === "all" ? `${done}/${list.length} · ${units.length} UNITS` : `${done}/${list.length}${days !== null ? ` · ${(u.finalLabel || "FINAL").toUpperCase()} IN ${days} DAYS` : ""}`;
+    const info = u.code === "all" ? `${done}/${list.length} · ${units.length} UNITS` : `${done}/${list.length}${days !== null ? ` · ${U((u.finalLabel || "Final"))} in ${days} days` : ""}`;
     return `<button class="unitcard label ${filters.unit === u.code ? "selected" : ""}" data-action="filter-unit" data-unit="${esc(u.code)}" style="--uc:${u.code === "all" ? "var(--text)" : unitColour(u.code, units)}">
       ${panel(`<div style="padding:10px 12px"><div class="code"><i></i>${esc(u.code === "all" ? "ALL" : u.code)}</div><div class="info">${esc(info)}</div>${segbar(done, list.length, 4)}</div>`, { border: filters.unit === u.code ? "var(--accent)" : "" })}</button>`;
   }).join("");
@@ -229,7 +232,7 @@ function calendarScreen({ units, tasks }) {
   const chip = (x) => x.final
     ? `<button class="wk-chip final" data-action="cal-day" data-day="${esc(x.final.final)}" style="--uc:${unitColour(x.final.code, units)}">${esc(finalText(x.final))}</button>`
     : `<button class="wk-chip ${D.isDone(x.task) ? "done" : ""} ${D.dueState(x.task)}" data-action="cal-task" data-day="${esc(x.task.due)}" data-id="${esc(x.task.id)}" style="--uc:${unitColour(x.task.unit, units)}">
-        <b>${esc(x.task.unit)}</b>${x.at !== null ? `<small>${esc(x.task.time.toUpperCase())}</small>` : ""}<span>${esc(x.task.title)}</span></button>`;
+        <b>${esc(x.task.unit)}</b>${x.at !== null ? `<small>${esc(U(x.task.time))}</small>` : ""}<span>${esc(x.task.title)}</span></button>`;
   const block = (x, slot, of) => {
     const top = (x.at - firstHour * 60) / 60 * HOUR - 44;
     const unit = x.final ? x.final.code : x.task.unit;
@@ -239,12 +242,12 @@ function calendarScreen({ units, tasks }) {
     return `<button class="wk-block ${done ? "done" : ""} ${x.task ? D.dueState(x.task) : "final"} ${x.task && x.task.id === calendarPick ? "picked" : ""}"
       data-action="${x.task ? "cal-task" : "cal-day"}" data-day="${esc(x.task ? x.task.due : x.final.final)}" ${x.task ? `data-id="${esc(x.task.id)}"` : ""}
       style="--uc:${unitColour(unit, units)};top:${Math.max(2, top)}px;left:calc(${slot * 100 / of}% + 3px);width:calc(${100 / of}% - 6px)">
-      <span class="code">${esc(unit)}${done ? " ✓" : ""}</span><span class="t">${esc(title)}</span><span class="tm">DUE ${esc((time ?? "").toUpperCase())}</span></button>`;
+      <span class="code">${esc(unit)}${done ? " ✓" : ""}</span><span class="t">${esc(title)}</span><span class="tm">${U("Due")} ${esc(U((time ?? "")))}</span></button>`;
   };
 
   const cols = `repeat(${visible.length}, minmax(0, 1fr))`;
   const heads = visible.map((i) => `<button class="wk-head label ${days[i] === today ? "today" : ""} ${days[i] === calendarDay ? "picked" : ""}" data-action="cal-day" data-day="${days[i]}">
-      <b>${D.dayLabel(days[i]).slice(0, 3).toUpperCase()}</b><small>${D.dayLabel(days[i]).slice(4).toUpperCase()}</small></button>`).join("");
+      <b>${U(D.dayLabel(days[i]).slice(0, 3))}</b><small>${U(D.dayLabel(days[i]).slice(4))}</small></button>`).join("");
   const strip = visible.some((i) => anyTime[i].length)
     ? `<div class="wk-row"><div class="wk-gutter label">ANY<br>TIME</div><div class="wk-cols" style="grid-template-columns:${cols}">
         ${visible.map((i) => `<div class="wk-any ${days[i] === today ? "today" : ""}">${anyTime[i].map(chip).join("")}</div>`).join("")}</div></div>` : "";
@@ -262,8 +265,8 @@ function calendarScreen({ units, tasks }) {
   const thisWeek = D.thisWeek()[0];
   const nav = `<div class="wk-nav">
       <button class="btn quiet" data-action="cal-move" data-step="-1" aria-label="Previous week">‹</button>
-      <div class="label"><div class="wk-title">${calendarWeek === thisWeek ? "THIS WEEK" : `WEEK OF ${esc(D.dayLabel(calendarWeek).slice(4).toUpperCase())}`}</div>
-        <div class="wk-range">${esc(D.dayLabel(days[0]).toUpperCase())} – ${esc(D.dayLabel(days[6]).toUpperCase())}</div></div>
+      <div class="label"><div class="wk-title">${calendarWeek === thisWeek ? "THIS WEEK" : `Week of ${esc(U(D.dayLabel(calendarWeek).slice(4)))}`}</div>
+        <div class="wk-range">${esc(U(D.dayLabel(days[0])))} – ${esc(U(D.dayLabel(days[6])))}</div></div>
       <button class="btn quiet" data-action="cal-move" data-step="1" aria-label="Next week">›</button>
       <span style="flex:1"></span>${calendarWeek !== thisWeek ? `<button class="btn" data-action="cal-today">This week</button>` : ""}</div>`;
   const grid = empty ? panel(`<div class="empty label">— NOTHING DUE THIS WEEK</div>`)
@@ -285,7 +288,7 @@ function gradesScreen({ units, tasks }) {
   if (!units.length) return panel(`<div class="empty label">${esc(words().empty)}</div>`);
   const P = D.percentText;
   const stat = (label, value, detail = "") => `<div class="gstat"><div class="stat">${value}${detail ? `<small class="label">${detail}</small>` : ""}</div>
-    <div class="statlabel label">${esc(skin().prefix)}${label.toUpperCase()}</div></div>`;
+    <div class="statlabel label">${esc(skin().prefix)}${U(label)}</div></div>`;
   const unitPanels = units.map((u) => {
     const g = D.grades(u, tasks);
     const marked = g.items.filter((i) => state.marks[i.task.id] !== undefined).length;
@@ -297,7 +300,7 @@ function gradesScreen({ units, tasks }) {
       return `<div class="gtarget label"><b>${l}</b><span class="${r.secured ? "ok" : r.out ? "out" : ""}">${r.secured ? "✓ SECURED" : r.out ? "OUT OF REACH" : `NEED ${P(r.need)} AVG`}</span></div>`;
     }).join("");
     const rows = g.items.map((i) => `<div class="grow-row"><div class="body"><div class="title">${esc(i.task.title)}</div>
-        <div class="meta"><span class="section">${esc(i.task.section)}</span>${i.task.due ? `<span class="label" style="font-size:calc(11px + var(--bump,0px))">${esc(D.dayLabel(i.task.due).toUpperCase())}${i.task.time ? `, ${esc(i.task.time.toUpperCase())}` : ""}</span>` : ""}</div></div>
+        <div class="meta"><span class="section">${esc(i.task.section)}</span>${i.task.due ? `<span class="label" style="font-size:calc(11px + var(--bump,0px))">${esc(U(D.dayLabel(i.task.due)))}${i.task.time ? `, ${esc(U(i.task.time))}` : ""}</span>` : ""}</div></div>
       <div class="gweight label">WEIGHT ${P(i.weight)}${i.shared ? "<small>SHARED</small>" : ""}</div>
       <label class="gmark"><input type="number" min="0" max="100" step="0.5" placeholder="—" value="${state.marks[i.task.id] ?? ""}" data-mark="${esc(i.task.id)}" aria-label="Mark for ${esc(i.task.title)}, out of 100">%</label></div>`).join("");
     return panel(`${head}
@@ -324,14 +327,14 @@ function settingsScreen({ units, tasks }) {
     ${state.units.map((u) => {
       const n = state.tasks.filter((t) => t.unit === u.code).length;
       return `<div class="settings-row"><div><span class="tag" style="--tc:${unitColour(u.code, units)}">${esc(u.code)}</span> ${esc(u.name)}
-        <div class="small" style="font-size:10px;color:var(--dim);margin-top:4px">${n} TASK${n === 1 ? "" : "S"}${u.final ? ` · FINAL ${esc(D.dayLabel(u.final).toUpperCase())}` : ""}</div></div>
+        <div class="small" style="font-size:10px;color:var(--dim);margin-top:4px">${n} task${n === 1 ? "" : "s"}${u.final ? ` · Final ${esc(U(D.dayLabel(u.final)))}` : ""}</div></div>
         <div style="display:flex;gap:8px"><button class="btn quiet" data-action="copy-unit" data-unit="${esc(u.code)}">Copy tasks.json</button>
         <button class="btn" data-action="edit-unit" data-unit="${esc(u.code)}">Edit</button></div></div>`;
     }).join("")}
     <div class="settings-row"><button class="btn primary" data-action="add-unit">+ Add unit</button></div>`) : "";
   const github = !local ? panel(`<div class="panel-head">${header("GitHub")}</div>
     <div class="settings-row"><span>Token</span><span class="label" style="font-size:11px;color:var(--muted)">🔒 SAVED IN THIS BROWSER</span></div>
-    <div class="settings-row"><span>Last updated</span><span class="label" style="font-size:11px;color:var(--muted)">${state.github.lastUpdated ? esc(D.dayLabel(D.todayISO(new Date(state.github.lastUpdated))).toUpperCase() + ", " + D.londonTime(new Date(state.github.lastUpdated))) : "NEVER"}</span></div>
+    <div class="settings-row"><span>Last updated</span><span class="label" style="font-size:11px;color:var(--muted)">${state.github.lastUpdated ? esc(U(D.dayLabel(D.todayISO(new Date(state.github.lastUpdated)))) + ", " + D.londonTime(new Date(state.github.lastUpdated))) : "NEVER"}</span></div>
     <div class="settings-row"><div style="display:flex;gap:8px"><button class="btn" data-action="github-guide-token">Replace token</button>
       <button class="btn quiet" data-action="remove-token">Remove token</button><button class="btn quiet" data-action="github-guide-unit">Add a unit on GitHub</button></div></div>`) : "";
   const skinCards = SKINS.map((k) => {
@@ -339,10 +342,10 @@ function settingsScreen({ units, tasks }) {
     return `<button class="card ${k.id === s.id ? "selected" : ""}" data-action="skin" data-skin="${k.id}">${panel(`<div style="padding:12px">
       <div class="preview" style="background:${p.background};color:${p.text};border:1px solid ${p.border};font-family:${k.font.replaceAll('"', "'")};font-style:${k.fontStyle}">
         <div class="pw">${k.symbol ? `<span style="color:${p.accent}">${k.symbol}</span> ` : ""}${esc(k.wordmark)}</div>
-        <div class="pl" style="color:${p.accent}">${esc(k.prefix)}TODAY · ${esc(D.dayLabel(D.todayISO()).toUpperCase().slice(4))}</div>
+        <div class="pl" style="color:${p.accent}">${esc(k.prefix)}${k.sentenceCase ? `Today · ${esc(D.dayLabel(D.todayISO()).slice(4))}` : `TODAY · ${esc(D.dayLabel(D.todayISO()).toUpperCase().slice(4))}`}</div>
         <div class="bars">${p.units.map((c) => `<i style="background:${c}"></i>`).join("")}</div></div>
       <div class="name">${esc(k.name)}${k.id === s.id ? `<span class="active">● ACTIVE</span>` : ""}</div>
-      <div class="tagline">${esc(k.tagline)}</div><div class="pack">SOUNDS · ${esc(PACK_NAMES[k.sounds].toUpperCase())}</div></div>`, { border: k.id === s.id ? "var(--accent)" : "" })}</button>`;
+      <div class="tagline">${esc(k.tagline)}</div><div class="pack">${U("Sounds")} · ${esc(U(PACK_NAMES[k.sounds]))}</div></div>`, { border: k.id === s.id ? "var(--accent)" : "" })}</button>`;
   }).join("");
   const themeCards = s.palettes.map((p) => `<button class="card ${p.id === palette().id ? "selected" : ""}" data-action="palette" data-palette="${p.id}">
     ${panel(`<div style="padding:12px"><div class="preview" style="background:${p.background};color:${p.text};border:1px solid ${p.border}">
@@ -353,7 +356,7 @@ function settingsScreen({ units, tasks }) {
   const toggle = (key, label, detail) => `<label class="switch"><span>${label}<div class="detail">${detail}</div></span>
     <input type="checkbox" data-setting="${key}" ${state.settings[key] ? "checked" : ""}></label>`;
   const system = panel(`<div class="panel-head">${header("System")}</div>
-    ${toggle("sounds", "Sounds", PACK_NAMES[s.sounds].toUpperCase() + " PACK")}
+    ${toggle("sounds", "Sounds", U(PACK_NAMES[s.sounds]) + " PACK")}
     ${toggle("effects", "Skin effects", "TRANSITIONS · DECODE · TICKS · LOGO")}
     ${toggle("boot", "Boot screen", "WHEN THE APP OPENS")}
     ${toggle("animatedBackground", "Animated background", "USES MORE POWER")}
@@ -403,23 +406,24 @@ function render({ animate = false } = {}) {
   const late = data.tasks.filter((t) => t.due && t.due < D.todayISO() && !D.isDone(t)).length;
   const threat = D.threat(data.tasks);
   const glitchy = !s.symbol;
-  const title = glitchy ? esc(s.wordmark).replace("//", `<span class="slash">//</span>`) : `<span class="symbol">${s.symbol}</span>${esc(s.wordmark)}`;
+  const title = glitchy ? esc(s.wordmark).replace("//", `<span class="slash">//</span>`)
+    : s.appIcon ? `<span class="appicon">${s.symbol}</span><span>${esc(s.wordmark)}</span>` : `<span class="symbol">${s.symbol}</span>${esc(s.wordmark)}`;
   const progress = rank.next ? (xp - rank.min) / (rank.next - rank.min) : 1;
   app.innerHTML = `<div class="backdrop"></div><div class="app">
     <aside class="sidebar">
       <div class="wordmark ${glitchy ? "glitchy" : ""}"><div class="title">${title}</div><div class="sub">${esc(s.subtitle)}${glitchy ? ` · V${VERSION}` : ""}</div></div>
       <nav class="nav">${SCREENS.map((x, i) => `<button class="${x.id === screen ? "selected" : ""}" data-action="nav" data-screen="${x.id}" aria-current="${x.id === screen ? "page" : "false"}">
-        <span class="num">${String(i + 1).padStart(2, "0")}</span><span class="icon">${ICONS[x.id]}</span>${esc(x.title.toUpperCase())}</button>`).join("")}</nav>
+        <span class="num">${String(i + 1).padStart(2, "0")}</span><span class="icon">${ICONS[x.id]}</span>${esc(U(x.title))}</button>`).join("")}</nav>
       <div class="grow"></div>
       <div class="rank label"><div class="lv">${esc(s.prefix)}RANK · LV ${rank.level}</div><div class="name decode">${esc(words().ranks[rank.index])}</div>
         ${segbar(Math.round(progress * 100), 100, 14)}<div class="xp">${rank.next ? `${xp} / ${rank.next} XP` : `${xp} XP · MAX RANK`}</div></div>
       <button class="cycler label" data-action="cycle-theme" title="${s.palettes.length > 1 ? "Next theme" : "Next skin"}">
         <span class="bars">${["accent", "glitch", "soon", "overdue"].map((c) => `<i style="background:var(--${c})"></i>`).join("")}</span>
-        ${s.palettes.length > 1 ? `THEME ▸ ${esc(palette().name.toUpperCase())}` : `SKIN ▸ ${esc(s.name.toUpperCase())}`}</button>
+        ${s.palettes.length > 1 ? `Theme ${skin().sentenceCase ? "·" : "▸"} ${esc(U(palette().name))}` : `Skin ▸ ${esc(U(s.name))}`}</button>
     </aside>
     <main class="main">
       <div class="topbar"><span class="crumb">${esc(s.breadcrumb)}</span><span class="arrow">${esc(s.arrow)}</span>
-        <span class="decode">${esc(s.soft ? current.title.toUpperCase() : current.path)}</span><span class="spacer"></span>
+        <span class="decode">${esc(s.soft ? U(current.title) : current.path)}</span><span class="spacer"></span>
         <button class="btn quiet" data-action="palette-open" title="Command palette (${MOD}K)">${ICONS.command}Command <span style="opacity:.6">${MOD}K</span></button>
         ${state.source === "github" ? `<span class="updated">${syncStatus === "SYNCING…" ? "SYNCING…" : state.github.lastUpdated ? `UPDATED ${D.londonTime(new Date(state.github.lastUpdated))}` : ""}</span>
           <button class="btn" data-action="refresh" title="Refresh (${MOD}R)">${ICONS.refresh}Refresh</button>` : ""}</div>
@@ -430,7 +434,7 @@ function render({ animate = false } = {}) {
         <span class="k">OPEN</span><span class="v">${open}</span><span class="sep">│</span>
         <span class="k">LATE</span><span class="v" style="${late ? "color:var(--overdue)" : ""}">${late}</span><span class="sep">│</span>
         <span class="k">${esc(words().threat)}</span><span class="v" style="color:${threat === "CRITICAL" ? "var(--overdue)" : threat === "ELEVATED" ? "var(--soon)" : "var(--muted)"}">${threat}</span>
-        <span class="spacer"></span><span class="wide k">${s.palettes.length > 1 ? "THEME" : "SKIN"}</span><span class="wide v">${esc((s.palettes.length > 1 ? palette().name : s.name).toUpperCase())}</span><span class="wide sep">│</span>
+        <span class="spacer"></span><span class="wide k">${s.palettes.length > 1 ? "THEME" : "SKIN"}</span><span class="wide v">${esc(U((s.palettes.length > 1 ? palette().name : s.name)))}</span><span class="wide sep">│</span>
         <span class="wide k">${MOD}K</span><span class="wide v">COMMAND</span><span class="sep">│</span>
         <span class="studio" title="Made by Michal">MICHAL TECH</span></div>
     </main></div>`;
@@ -661,7 +665,7 @@ function openPalette() {
     ...SCREENS.map((x) => ({ icon: ICONS[x.id], title: `Go to ${x.title.toLowerCase()}`, detail: "SCREEN", run: () => { screen = x.id; render({ animate: true }); } })),
     ...(data.units.length ? [{ icon: "＋", title: "Add a task", detail: state.source === "github" ? "MINE" : "TASK", run: () => openTaskEditor() }] : []),
     ...(state.source === "github" ? [{ icon: ICONS.refresh, title: "Refresh now", detail: `${MOD}R`, run: () => refresh(true) }] : []),
-    ...(skin().palettes.length > 1 ? [{ icon: "◐", title: "Next theme", detail: palette().name.toUpperCase(), run: () => cycleTheme() }] : []),
+    ...(skin().palettes.length > 1 ? [{ icon: "◐", title: "Next theme", detail: U(palette().name), run: () => cycleTheme() }] : []),
     ...SKINS.map((k) => ({ icon: "▣", title: `Skin: ${k.name}`, detail: "SKIN", run: () => { state.skin = k.id; save(); applySkin(); render({ animate: true }); } })),
     ...skin().palettes.map((p) => ({ icon: "◐", title: `Theme: ${p.name}`, detail: "THEME", run: () => { state.palettes[skin().id] = p.id; save(); applySkin(); render(); } })),
   ];
@@ -885,6 +889,21 @@ function boot() {
   const el = document.createElement("div");
   el.className = "boot";
   const duration = lines.length * 0.17 + 0.45;
+  if (s.sentenceCase) {
+    // Cupertino: no readout. The app icon settles in, a thin bar fills, then a greeting.
+    el.classList.add("calm");
+    el.innerHTML = `<span class="wordmark"><span class="appicon">${s.symbol}</span></span><h1>${esc(s.bootTitle)}</h1>
+      <div class="bar" style="--dur:${duration}s"><i></i></div><div class="hello">${esc(s.greeting)}</div><div class="skip">Click or press any key to skip</div>`;
+    document.body.append(el);
+    let done = false;
+    const finish = () => { if (done) return; done = true; el.style.transition = "opacity .25s"; el.style.opacity = "0"; setTimeout(() => el.remove(), 250); removeEventListener("keydown", finish); };
+    el.onclick = finish;
+    addEventListener("keydown", finish);
+    sound("boot");
+    setTimeout(() => el.querySelector(".hello").classList.add("on"), duration * 1000);
+    setTimeout(finish, duration * 1000 + 900);
+    return;
+  }
   el.innerHTML = `<div class="lines"></div><div class="art"></div><div class="bar" style="--dur:${duration}s"><i></i></div><div class="skip">CLICK OR PRESS ANY KEY TO SKIP</div>`;
   document.body.append(el);
   let step = 0, finished = false;
@@ -903,6 +922,45 @@ function boot() {
   el.querySelector(".art").innerHTML = FX.bootArt(s.vibe, 0, lines.length);
   setTimeout(tick, 120);
 }
+
+// MARK: Sentence case (Cupertino)
+
+/// Words that keep their own capitals when a label is turned into sentence case.
+const KEEP = { XP: "XP", OK: "OK", ID: "ID", GITHUB: "GitHub", JSON: "JSON", MICHAL: "Michal", TECH: "Tech", UK: "UK", PWA: "PWA",
+               AM: "am", PM: "pm", LON: "London", TODO: "To do" };
+const NAMES = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN", "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+/// "DUE IN 3 DAYS · SAT 31 OCT" → "Due in 3 days · Sat 31 Oct". Codes with digits (CMP4266, 1ST) stay as they are.
+function sentence(text) {
+  let start = true;
+  return text.replace(/[A-Za-z0-9:'’.%]+|[·—–|\/,()]/g, (word) => {
+    if (/^[·—–|]$/.test(word)) { start = true; return word; }
+    if (!/[A-Z]/.test(word)) { if (/[a-z0-9]/i.test(word)) start = false; return word; }
+    const bare = word.replace(/[^A-Z]/g, "");
+    let out;
+    if (KEEP[word] ?? KEEP[bare]) out = KEEP[word] ?? word.replace(bare, KEEP[bare]);
+    else if (/\d/.test(word)) out = word;
+    else if (NAMES.includes(bare)) out = word[0] + word.slice(1).toLowerCase();
+    else out = start ? word[0] + word.slice(1).toLowerCase() : word.toLowerCase();
+    start = false;
+    return out;
+  });
+}
+const SKIP = ".card .preview, .tag, .title, .section, .notes, .id, .t, input, textarea, pre, code, .unitcard .code, .wk-chip b, .wk-block .code, .about b, .appicon";
+function sentenceCase(root) {
+  if (!skin().sentenceCase) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = node.nodeValue;
+    if (!/[A-Z]{2}/.test(text) || /[a-z]/.test(text) || node.parentElement?.closest(SKIP)) continue;
+    node.nodeValue = sentence(text);
+  }
+}
+new MutationObserver((changes) => {
+  for (const change of changes) for (const node of change.addedNodes) {
+    if (node.nodeType === 1) sentenceCase(node);
+    else if (node.nodeType === 3 && node.parentElement) sentenceCase(node.parentElement);
+  }
+}).observe(document.body, { childList: true, subtree: true });
 
 // MARK: Start
 

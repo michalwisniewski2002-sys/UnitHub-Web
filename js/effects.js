@@ -164,6 +164,7 @@ export function tickEffect(row, vibe) {
     case "grove": burst(6, "🍃", ["var(--accent)"], 50); break;
     case "aero": burst(5, "○", ["var(--accent)"], 56); break;
     case "pixel": add("coin", "● +XP"); break;
+    case "cupertino": add("ripple", "", "", 600); break;
     default: add("sweep", "", "", 600);
   }
 }
@@ -226,6 +227,8 @@ export function bootArt(vibe, step, steps) {
         <i style="position:absolute;width:230px;height:70px;border:3px solid var(--glitch);border-radius:50%;transform:rotate(${-25 - pct * 3.6}deg)"></i>
         <i style="width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,var(--accent) 60%);box-shadow:0 0 18px color-mix(in srgb,var(--accent) 50%,transparent),inset 0 -10px 20px rgb(0 0 0 / .15)"></i>
         </div><div style="font-size:${done ? 22 : 13}px;font-weight:800;color:${done ? "var(--accent)" : "var(--muted)"};text-transform:none">${done ? "Welcome!" : `Starting up… ${pct}%`}</div></div>`;
+    case "cupertino":
+      return `<div class="wordmark"><span class="appicon" style="width:120px;height:120px;border-radius:27px;font-size:64px">✓</span></div>`;
     case "pixel": {
       const blocks = Math.floor((pct / 100) * 10);
       const bar = (colour) => Array.from({ length: 10 }, (_, i) => `<i style="width:14px;height:12px;background:${i < blocks ? colour : "var(--border)"}"></i>`).join("");
@@ -252,6 +255,17 @@ export function setAmbient(enabled, vibe, palette) {
   const sweeps = { terminal: ["down", 160, 9, `linear-gradient(transparent, color-mix(in srgb, var(--glitch) 4%, transparent), transparent)`],
                    corporate: ["down", 70, 6, `linear-gradient(transparent, color-mix(in srgb, var(--accent) 4%, transparent), color-mix(in srgb, var(--accent) 35%, transparent))`],
                    ledger: ["across", 3, 24, `linear-gradient(to right, transparent, color-mix(in srgb, var(--accent) 22%, transparent), transparent)`] };
+  if (vibe === "cupertino") {
+    // Two huge, soft glows of colour drifting slowly, like a desktop picture. Pure CSS transforms (no redraws).
+    const el = document.createElement("div");
+    el.className = "aurora";
+    const glow = (colour, x, y, dx, dy, dur) => `<i style="left:${x}%;top:${y}%;--dx:${dx}vw;--dy:${dy}vh;--dur:${dur}s;
+      background:radial-gradient(closest-side, color-mix(in srgb, ${colour} ${palette.light ? 14 : 18}%, transparent), transparent)"></i>`;
+    el.innerHTML = glow(palette.accent, 15, 85, 30, -30, 26) + glow(palette.glitch, 85, 20, -30, 25, 34);
+    document.body.append(el);
+    ambient = { stop: () => el.remove() };
+    return;
+  }
   if (sweeps[vibe]) {
     const [dir, thick, dur, bg] = sweeps[vibe];
     const el = document.createElement("div");

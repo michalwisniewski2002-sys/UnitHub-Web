@@ -1,13 +1,21 @@
-// The nine skins, matching the Mac app's Skins.swift and Vibes.swift. A skin is a whole design: panel shape, type,
+// The ten skins, matching the Mac app's Skins.swift and Vibes.swift. A skin is a whole design: panel shape, type,
 // header style, background, sidebar selection, decoration, words, ranks, boot screen and sound pack.
 import { PALETTES } from "./palettes.js";
 
 const MONO = 'ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace';
 const SANS = '"Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif';
 const SERIF = 'Georgia, Cambria, "Times New Roman", ui-serif, serif';
+const APPLE = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif';
 const ROUNDED = 'ui-rounded, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif';
 
 export const SKINS = [
+  {
+    id: "cupertino", name: "Cupertino", tagline: "Clean, calm and polished, in the style of Apple's own apps. Light and dark themes.",
+    panel: "card", header: "plain", font: APPLE, fontStyle: "normal", fontStretch: "normal", tracking: 0, soft: true, sentenceCase: true,
+    background: "plain", selection: "sourceList", accent: "softShadow", glow: 0, wordmark: "UnitHub", symbol: "✓", appIcon: true,
+    subtitle: "Study planner", breadcrumb: "UnitHub", arrow: "›", prompt: "", prefix: "", vibe: "cupertino", sounds: "crisp",
+    bootTitle: "UnitHub", greeting: "Welcome back.",
+  },
   {
     id: "netrunner", name: "Netrunner", tagline: "Neon HUD, glitches, scanlines. Works with every theme.",
     panel: "chamfer", header: "slashes", font: MONO, fontStyle: "normal", fontStretch: "normal", tracking: 1.5,
@@ -93,6 +101,8 @@ export const VIBES = {
            ranks: ["SEEDLING", "SPRITE", "RANGER", "DRUID", "ARCHDRUID", "ELDER"] },
   aero: { empty: "— ALL CLEAR! ENJOY THE SUNSHINE ☀︎", levelUp: "UPGRADE COMPLETE!", threat: "FORECAST", glyphs: "○◌◎●◦",
           ranks: ["DIAL-UP", "BROADBAND", "HOTSPOT", "FIBRE OPTIC", "SATELLITE", "CLOUD NINE"] },
+  cupertino: { empty: "Nothing due. Enjoy your day.", levelUp: "Level up", threat: "Outlook", glyphs: null,
+               ranks: ["Starter", "Explorer", "Achiever", "Pro", "Pro Max", "Ultra"] },
   pixel: { empty: "— NO QUESTS. GO TOUCH GRASS", levelUp: "NEW HIGH SCORE!", threat: "ENEMIES", glyphs: "█▓▒░",
            ranks: ["NPC", "ROOKIE", "HERO", "CHAMPION", "BOSS SLAYER", "FINAL BOSS"] },
 };
@@ -100,5 +110,5 @@ export const VIBES = {
 export const RANK_XP = [0, 100, 300, 700, 1500, 3000];
 
 export function skinById(id) {
-  return SKINS.find((s) => s.id === id) ?? SKINS.find((s) => s.id === "sonder");
+  return SKINS.find((s) => s.id === id) ?? SKINS[0];
 }

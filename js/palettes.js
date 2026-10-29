@@ -1,5 +1,191 @@
 // Every skin's colour themes, copied from the Mac app (Theme.swift, Skins.swift). Each text colour reaches 4.5:1 contrast.
 export const PALETTES = {
+ "cupertino": [
+  {
+   "id": "cupertino-light",
+   "name": "Light",
+   "tagline": "Bright and clean, system blue.",
+   "background": "#F2F2F7",
+   "panel": "#FFFFFF",
+   "hover": "#E5E5EA",
+   "border": "#D1D1D6",
+   "text": "#1C1C1E",
+   "muted": "#3C3C43",
+   "dim": "#55555A",
+   "accent": "#0062C4",
+   "overdue": "#C4001A",
+   "soon": "#A34400",
+   "glitch": "#5AC8FA",
+   "units": [
+    "#0062C4",
+    "#1A6E30",
+    "#8040A6",
+    "#9E4A00"
+   ],
+   "light": true
+  },
+  {
+   "id": "cupertino-dark",
+   "name": "Dark",
+   "tagline": "Calm charcoal, bright blue.",
+   "background": "#161618",
+   "panel": "#1F1F21",
+   "hover": "#2C2C2E",
+   "border": "#3A3A3C",
+   "text": "#F5F5F7",
+   "muted": "#AEAEB2",
+   "dim": "#9C9CA1",
+   "accent": "#4DA3FF",
+   "overdue": "#FF6E66",
+   "soon": "#FFB340",
+   "glitch": "#BF5AF2",
+   "units": [
+    "#4DA3FF",
+    "#32D74B",
+    "#DA8FFF",
+    "#FFB340"
+   ],
+   "light": false
+  },
+  {
+   "id": "cupertino-starlight",
+   "name": "Starlight",
+   "tagline": "Warm champagne and deep teal.",
+   "background": "#F5F1EA",
+   "panel": "#FFFDF9",
+   "hover": "#EAE3D7",
+   "border": "#D9CFBF",
+   "text": "#2B2620",
+   "muted": "#4F473D",
+   "dim": "#5A5146",
+   "accent": "#0B6A92",
+   "overdue": "#B3261E",
+   "soon": "#864700",
+   "glitch": "#E3C48D",
+   "units": [
+    "#0B6A92",
+    "#1A6E30",
+    "#8040A6",
+    "#864700"
+   ],
+   "light": true
+  },
+  {
+   "id": "cupertino-midnight",
+   "name": "Midnight",
+   "tagline": "Deep navy, sky blue.",
+   "background": "#0B1220",
+   "panel": "#121A2B",
+   "hover": "#1B2539",
+   "border": "#2C3850",
+   "text": "#EEF2FA",
+   "muted": "#A8B3C8",
+   "dim": "#95A0B7",
+   "accent": "#64D2FF",
+   "overdue": "#FF7A7A",
+   "soon": "#FFD60A",
+   "glitch": "#5E5CE6",
+   "units": [
+    "#64D2FF",
+    "#66E08A",
+    "#B7A8FF",
+    "#FFB340"
+   ],
+   "light": false
+  },
+  {
+   "id": "cupertino-mint",
+   "name": "Mint",
+   "tagline": "Fresh mint and green.",
+   "background": "#EEF6F2",
+   "panel": "#FFFFFF",
+   "hover": "#DCECE4",
+   "border": "#C3DCCF",
+   "text": "#1A2B23",
+   "muted": "#3A5047",
+   "dim": "#465B51",
+   "accent": "#006B4C",
+   "overdue": "#B3261E",
+   "soon": "#864700",
+   "glitch": "#66D4B0",
+   "units": [
+    "#006B4C",
+    "#0062C4",
+    "#8040A6",
+    "#864700"
+   ],
+   "light": true
+  },
+  {
+   "id": "cupertino-space",
+   "name": "Space Black",
+   "tagline": "True black, warm orange.",
+   "background": "#000000",
+   "panel": "#141414",
+   "hover": "#232325",
+   "border": "#333336",
+   "text": "#F5F5F7",
+   "muted": "#A1A1A6",
+   "dim": "#8E8E93",
+   "accent": "#FF9F0A",
+   "overdue": "#FF6961",
+   "soon": "#FFD60A",
+   "glitch": "#30D158",
+   "units": [
+    "#FF9F0A",
+    "#30D158",
+    "#64D2FF",
+    "#DA8FFF"
+   ],
+   "light": false
+  },
+  {
+   "id": "cupertino-lavender",
+   "name": "Lavender",
+   "tagline": "Soft lilac and violet.",
+   "background": "#F3F1FA",
+   "panel": "#FFFFFF",
+   "hover": "#E6E2F3",
+   "border": "#D3CDE8",
+   "text": "#221E33",
+   "muted": "#433D5C",
+   "dim": "#4F4868",
+   "accent": "#5B3CC4",
+   "overdue": "#B3261E",
+   "soon": "#864700",
+   "glitch": "#B9A6FF",
+   "units": [
+    "#5B3CC4",
+    "#0062C4",
+    "#1A6E30",
+    "#9E4A00"
+   ],
+   "light": true
+  },
+  {
+   "id": "cupertino-graphite",
+   "name": "Graphite",
+   "tagline": "Quiet greys, silver accent.",
+   "background": "#1E1E20",
+   "panel": "#28282B",
+   "hover": "#353539",
+   "border": "#48484C",
+   "text": "#F2F2F4",
+   "muted": "#BDBDC2",
+   "dim": "#A9A9AE",
+   "accent": "#E5E5EA",
+   "overdue": "#FF7B72",
+   "soon": "#FFC266",
+   "glitch": "#FF9F0A",
+   "units": [
+    "#E5E5EA",
+    "#64D2FF",
+    "#66E08A",
+    "#FFB340"
+   ],
+   "light": false
+  }
+ ],
  "netrunner": [
   {
    "id": "neon-cyan",

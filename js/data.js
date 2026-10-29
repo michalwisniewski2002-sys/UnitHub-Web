@@ -13,7 +13,7 @@ const DEFAULTS = {
   ticks: {}, // "UNIT:id" -> true/false (beats the file's "done")
   marks: {}, // "UNIT:id" -> 0–100
   xp: {}, // "UNIT:id" -> XP earned for ticking it
-  skin: "sonder",
+  skin: "cupertino", // new users start in Cupertino
   palettes: {}, // skin id -> palette id
   settings: { sounds: true, effects: true, boot: true, animatedBackground: false, reminders: false },
   github: { token: "", files: {}, lastUpdated: null }, // files: repo -> { etag, text }

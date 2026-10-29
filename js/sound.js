@@ -79,6 +79,14 @@ const SIGNATURES = {
             V("sine", 2093, 0.6, 0.25, 0.25, { to: 3136 }), V("sine", 1200, 0.85, 0.12, 0.3, { to: 2400 })],
     boot: [...[523, 784, 1047, 1568].map((hz, i) => V("sine", hz, i * 0.12, 0.7, 0.3)), V("sine", 600, 0.5, 0.2, 0.25, { to: 2400 })],
   },
+  crisp: {
+    // Cupertino: a soft pop with a glass tap, three gentle rising notes, a marimba run and a warm chord.
+    tick: [V("sine", 1400, 0, 0.05, 0.5, { to: 900 }), V("sine", 2093, 0.03, 0.25, 0.22), V("sine", 3136, 0.03, 0.12, 0.06)],
+    alert: [1319, 1568, 2093].flatMap((hz, i) => [V("sine", hz, i * 0.13, 0.6, 0.38), V("sine", hz * 2, i * 0.13, 0.2, 0.06)]),
+    levelUp: [...[523, 659, 784, 1047, 1319].flatMap((hz, i) => [V("sine", hz, i * 0.07, 0.22, 0.42), V("sine", hz * 4, i * 0.07, 0.03, 0.08)]),
+              ...[784, 1047, 1319].map((hz) => V("sine", hz, 0.38, 0.8, 0.22))],
+    boot: [...[349, 440, 523, 698].map((hz) => V("sine", hz, 0, 1.0, 0.22, { fadeIn: true })), V("sine", 1397, 0.55, 0.6, 0.16)],
+  },
   chiptune: {
     tick: [V("square", 988, 0, 0.06, 0.45), V("square", 1319, 0.06, 0.22, 0.45)],
     alert: [...range(3).flatMap((i) => [V("square", 1568, i * 0.24, 0.08, 0.45), V("square", 1175, i * 0.24 + 0.09, 0.08, 0.45)]), V("triangle", 196, 0, 0.7, 0.3)],
@@ -87,7 +95,7 @@ const SIGNATURES = {
   },
 };
 
-const LOUDNESS = { netrunner: 1, corporate: 1.25, bard: 1.25, bubbly: 1.25, woodland: 1.25, aero: 1.25, minimal: 1.15, distorted: 0.85, chiptune: 0.85 };
+const LOUDNESS = { netrunner: 1, corporate: 1.25, bard: 1.25, bubbly: 1.25, woodland: 1.25, aero: 1.25, crisp: 1.25, minimal: 1.15, distorted: 0.85, chiptune: 0.85 };
 
 /// The base voice changed to fit a pack (null drops it).
 function reshape(pack, v) {
@@ -103,6 +111,7 @@ function reshape(pack, v) {
     case "woodland": if (v.wave === "noise") v.gain *= 0.3; if (v.wave === "square") v.wave = "sine"; if (v.wave === "saw") v.wave = "triangle"; clean(); v.length *= 1.5; break;
     case "aero": if (v.wave === "noise") return null; if (v.wave !== "click") v.wave = "sine"; clean(); scale(1.2); v.length *= 1.3; break;
     case "chiptune": if (v.wave === "saw" || v.wave === "sine") v.wave = "square"; clean(); break;
+    case "crisp": if (v.wave === "noise") return null; if (v.wave !== "click") v.wave = "sine"; clean(); v.gain *= 0.75; break;
   }
   return v;
 }
@@ -177,4 +186,4 @@ export function play(sound, pack, enabled) {
 }
 
 export const PACK_NAMES = { netrunner: "Terminal", corporate: "Corporate", distorted: "Distorted", bard: "Bard", bubbly: "Bubbly",
-                            minimal: "Minimal", woodland: "Woodland", aero: "Glassy", chiptune: "Chiptune" };
+                            minimal: "Minimal", woodland: "Woodland", aero: "Glassy", chiptune: "Chiptune", crisp: "Crisp" };
